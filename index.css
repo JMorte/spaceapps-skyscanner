@@ -1,0 +1,28 @@
+* {
+    margin: 0;
+    padding: 0;
+}
+
+#canvasOne {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    padding-bottom: 0;
+    padding-top: 0;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+#canvasContainer {
+    width: 100%;
+    height: 100%;
+}
+
+#timeBar {
+    text-align: center;
+    position: absolute;
+    z-index: 1;
+    bottom: 30px;
+    left: 250px;
+    right: 250px;
+}

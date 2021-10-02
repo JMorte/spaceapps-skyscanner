@@ -10,15 +10,24 @@
     <script src="https://cdn.jsdelivr.net/npm/@nasaworldwind/worldwind@0.10.0/build/dist/worldwind.min.js"></script>
     <script src="./tle.js"></script>
     <script src="./globe.js"></script>
+
+    <link rel="stylesheet" type="text/css" href="./index.css" />
 </head>
 
 <body>
-    <div>
+    <div id="canvasContainer">
+        <div id="timeBar">
+            <button
+                style="font-size:65%; width: 65px; height: 25px; max-height:25px; background-color: rgba(255,255,255,0.2); color: white; padding: 0.1em 0.1em 0.1em 0.1em; border: 1px solid white"
+                id="timeReset">RESET TIME
+            </button>
+        </div>
         <!-- Create a canvas for Web World Wind. -->
-        <canvas id="canvasOne" width="1024" height="768" style="background-color: black;">
+        <canvas id="canvasOne" style="background-color: black;">
             Your browser does not support HTML5 Canvas.
         </canvas>
     </div>
+
 </body>
 
 </html>

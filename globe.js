@@ -56,7 +56,7 @@ function eventWindowLoaded() {
         { layer: new WorldWind.AtmosphereLayer(), enabled: false },
         // WorldWindow UI layers.
         { layer: new WorldWind.CompassLayer(), enabled: false },
-        { layer: new WorldWind.CoordinatesDisplayLayer(wwd), enabled: true },
+        { layer: new WorldWind.CoordinatesDisplayLayer(wwd), enabled: false },
         { layer: new WorldWind.ViewControlsLayer(wwd), enabled: false },
     ];
 
