@@ -2,18 +2,38 @@
 
 const debrisLayer = new WorldWind.RenderableLayer("Debris");
 
-// const tleArray_g = [
-//     {
-//         tleLine1: '1 25544U 98067A   19156.50900463  .00003075  00000-0  59442-4 0  9992',
-//         tleLine2: '2 25544  51.6433  59.2583 0008217  16.4489 347.6017 15.51174618173442',
-//         id: '1',
-//     },
-//     {
-//         tleLine1: '1 49266U 19063AS  21271.30822274  .00006367  00000-0  22572-2 0  9999',
-//         tleLine2: '2 49266  98.5377 296.5207 0011437  91.5160 268.7335 14.34790113 15101',
-//         id: '2',
-//     }
-// ];
+const systemTimeIncrease_g = 2000;
+let systemTimeOffset_g = 0;
+let intervalId_g;
+
+$(document).ready(function () {
+    $("#dateTimeBar").html((new Date()).toString());
+    $("#dateSlider").slider({
+        value: 0,
+        min: -432000,
+        max: 432000,
+        animate: "slow",
+        orientation: "horizontal",
+        slide: function (event, ui) {
+            let date = new Date(Date.now() + ui.value * 1000);
+            $("#dateTimeBar").html(date.toString());
+        }
+    });
+    $("#dateSlider").on("slidestop", function (event, ui) {
+        systemTimeOffset_g = ui.value * 1000;
+        updateDebrisInLayer();
+        intervalId_g = setInterval(updateDebrisInLayer, systemTimeIncrease_g);
+    });
+    $("#dateSlider").on("slidestart", function (event, ui) {
+        clearInterval(intervalId_g);
+    });
+
+    $("#timeReset").on('click', function () {
+        systemTimeOffset_g = 0;
+        $("#dateTimeBar").html((new Date()).toString());
+        $("#dateSlider").slider('value', 0);
+    });
+});
 
 // Create the custom image for the placemark with a 2D canvas.
 const canvas = document.createElement("canvas");
@@ -98,10 +118,11 @@ function getPosition(satrec) {
     /*
         Compute the location of the TLE lines at a specific time    
     */
-    let positionAndVelocity = satellite.propagate(satrec, new Date());
+    let time = new Date(Date.now() + systemTimeOffset_g);
+    let positionAndVelocity = satellite.propagate(satrec, time);
     let positionEci = positionAndVelocity.position;
 
-    let gmst = satellite.gstime(new Date());
+    let gmst = satellite.gstime(time);
 
     let positionGd = satellite.eciToGeodetic(positionEci, gmst);
     let longitude = satellite.radiansToDegrees(positionGd.longitude),
@@ -115,11 +136,14 @@ function parseDebris(tleArray) {
     let resultArray = [];
 
     tleArray.forEach(element => {
-        let position = getPosition(satellite.twoline2satrec(element.Line1, element.Line2));
-        resultArray.push({
-            id: element.id,
-            position: position,
-        });
+        try {
+            let position = getPosition(satellite.twoline2satrec(element.Line1, element.Line2));
+            resultArray.push({
+                id: element.id,
+                position: position,
+            });
+        } catch (err) {
+        }
     });
     return resultArray;
 }
@@ -151,10 +175,12 @@ function addDebrisToLayer() {
 
     wwd.addLayer(debrisLayer);
 
-    setInterval(updateDebrisInLayer, 2000);
+    intervalId_g = setInterval(updateDebrisInLayer, systemTimeIncrease_g);
 }
 
 function updateDebrisInLayer() {
+    let time = new Date(Date.now() + systemTimeOffset_g);
+    $("#dateTimeBar").html(time.toString());
     positionsArray_g = parseDebris(sanitizedTleArray_g);
     for (let i = 0; i < positionsArray_g.length; i++) {
         debrisLayer.renderables[i].position.latitude = positionsArray_g[i].position.latitude;
