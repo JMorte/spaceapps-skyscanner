@@ -8,19 +8,30 @@
         integrity="sha512-JxDmggH93+jdpfW+JF5CgtX1VNBAsvZVbswpqCtTMPyRvPkI+BMdm0L7JR9fbjxEoWt93AyPeiK0OrvfQWx++A=="
         crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script src="https://cdn.jsdelivr.net/npm/@nasaworldwind/worldwind@0.10.0/build/dist/worldwind.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"
+        integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"
+        integrity="sha256-VazP97ZCwtekAsvgPBSUwPFKdrwD3unUfSGVYrahUqU=" crossorigin="anonymous"></script>
+
     <script src="./tle.js"></script>
     <script src="./globe.js"></script>
 
+    <link rel="stylesheet" type="text/css" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css" />
     <link rel="stylesheet" type="text/css" href="./index.css" />
 </head>
 
 <body>
     <div id="canvasContainer">
         <div id="timeBar">
-            <button
-                style="font-size:65%; width: 65px; height: 25px; max-height:25px; background-color: rgba(255,255,255,0.2); color: white; padding: 0.1em 0.1em 0.1em 0.1em; border: 1px solid white"
-                id="timeReset">RESET TIME
-            </button>
+            <div id="topTimeBar">
+                <div id="dateTimeBar"></div>
+                <button
+                    style="font-size:65%; width: 65px; height: 25px; max-height:25px; background-color: rgba(255,255,255,0.2); color: white; padding: 0.1em 0.1em 0.1em 0.1em; border: 1px solid white"
+                    id="timeReset">RESET TIME
+                </button>
+            </div>
+
+            <div id="dateSlider"></div>
         </div>
         <!-- Create a canvas for Web World Wind. -->
         <canvas id="canvasOne" style="background-color: black;">
