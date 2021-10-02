@@ -4,8 +4,8 @@ import datetime as dt
 import spacetrack.operators as op
 # import json
 
-identity = 'ozumozen@gmail.com'
-password = '3ea65PdUsSDp_F_'
+identity = ''
+password = ''
 st = SpaceTrackClient(identity, password)
 
 
