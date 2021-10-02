@@ -21,6 +21,7 @@ $(document).ready(function () {
     });
     $("#dateSlider").on("slidestop", function (event, ui) {
         systemTimeOffset_g = ui.value * 1000;
+        updateDebrisInLayer();
         intervalId_g = setInterval(updateDebrisInLayer, systemTimeIncrease_g);
     });
     $("#dateSlider").on("slidestart", function (event, ui) {
@@ -135,11 +136,14 @@ function parseDebris(tleArray) {
     let resultArray = [];
 
     tleArray.forEach(element => {
-        let position = getPosition(satellite.twoline2satrec(element.Line1, element.Line2));
-        resultArray.push({
-            id: element.id,
-            position: position,
-        });
+        try {
+            let position = getPosition(satellite.twoline2satrec(element.Line1, element.Line2));
+            resultArray.push({
+                id: element.id,
+                position: position,
+            });
+        } catch (err) {
+        }
     });
     return resultArray;
 }
