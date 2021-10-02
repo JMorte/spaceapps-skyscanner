@@ -8,12 +8,25 @@ const tleArray_g = [
         tleLine2: '2 25544  51.6433  59.2583 0008217  16.4489 347.6017 15.51174618173442',
         id: '1',
     },
-    // {
-    //     tleLine1: '1 49266U 19063AS  21271.30822274  .00006367  00000-0  22572-2 0  9999',
-    //     tleLine2: '2 49266  98.5377 296.5207 0011437  91.5160 268.7335 14.34790113 15101',
-    //     id: '2',
-    // }
+    {
+        tleLine1: '1 49266U 19063AS  21271.30822274  .00006367  00000-0  22572-2 0  9999',
+        tleLine2: '2 49266  98.5377 296.5207 0011437  91.5160 268.7335 14.34790113 15101',
+        id: '2',
+    }
 ];
+
+// Create the custom image for the placemark with a 2D canvas.
+const canvas = document.createElement("canvas");
+const ctx2d = canvas.getContext("2d");
+const size = 16;
+const c = size / 2 - 0.5;
+
+canvas.width = size;
+canvas.height = size;
+
+ctx2d.fillStyle = 'red';
+ctx2d.arc(c, c, c, 0, 2 * Math.PI, false);
+ctx2d.fill();
 
 let sanitizedTleArray_g;
 let positionsArray_g;
@@ -51,10 +64,44 @@ function eventWindowLoaded() {
         layers[l].layer.enabled = layers[l].enabled;
         wwd.addLayer(layers[l].layer);
     }
+    // Add the placemarks layer to the WorldWindow's layer list.
 
-    wwd.addLayer(debrisLayer);
+    // wwd.addLayer(debrisLayer);
+    // Create the renderable layer for placemarks.
+    var placemarkLayer = new WorldWind.RenderableLayer("Custom Placemark");
+    let placemark = genPlaceMarker(47.684444, -121.129722, 1e2);
 
+    // Add the placemark to the layer.
+    // placemarkLayer.addRenderable(placemark);
+    // wwd.addLayer(placemarkLayer);
     addDebrisToLayer();
+}
+
+function genPlaceMarker(latitude, longitude, altitude) {
+    // Set placemark attributes.
+    var placemarkAttributes = new WorldWind.PlacemarkAttributes(null);
+    // Wrap the canvas created above in an ImageSource object to specify it as the placemarkAttributes image source.
+    placemarkAttributes.imageSource = new WorldWind.ImageSource(canvas);
+    // Define the pivot point for the placemark at the center of its image source.
+    placemarkAttributes.imageOffset = new WorldWind.Offset(WorldWind.OFFSET_FRACTION, 0.5, WorldWind.OFFSET_FRACTION, 0.5);
+    placemarkAttributes.imageScale = 1;
+    placemarkAttributes.imageColor = WorldWind.Color.WHITE;
+
+    // Set placemark highlight attributes.
+    // Note that the normal attributes are specified as the default highlight attributes so that all properties
+    // are identical except the image scale. You could instead vary the color, image, or other property
+    // to control the highlight representation.
+    var highlightAttributes = new WorldWind.PlacemarkAttributes(placemarkAttributes);
+    highlightAttributes.imageScale = 1.2;
+
+    // Create the placemark with the attributes defined above.
+    var placemarkPosition = new WorldWind.Position(latitude, longitude, altitude);
+    var placemark = new WorldWind.Placemark(placemarkPosition, false, placemarkAttributes);
+    // Draw placemark at altitude defined above, relative to the terrain.
+    placemark.altitudeMode = WorldWind.RELATIVE_TO_GROUND;
+    // Assign highlight attributes for the placemark.
+    placemark.highlightAttributes = highlightAttributes;
+    return placemark;
 }
 
 function getPosition(satrec) {
@@ -67,11 +114,11 @@ function getPosition(satrec) {
     let gmst = satellite.gstime(new Date());
 
     let positionGd = satellite.eciToGeodetic(positionEci, gmst);
-    let longitude = positionGd.longitude,
-        latitude = positionGd.latitude,
+    let longitude = satellite.radiansToDegrees(positionGd.longitude),
+        latitude = satellite.radiansToDegrees(positionGd.latitude),
         height = positionGd.height * 1000;
 
-    return new WorldWind.Position(latitude, longitude, height);
+    return { latitude: latitude, longitude: longitude, altitude: height };
 }
 
 
@@ -93,12 +140,12 @@ function sanitizeTleArray(tleArray) {
     let resultArray = [];
 
     tleArray.forEach(element => {
-        // try {
-        getPosition(satellite.twoline2satrec(element.tleLine1, element.tleLine2));
-        resultArray.push(element);
-        // } catch (err) {
-        //     faultyItems += 1;
-        // }
+        try {
+            getPosition(satellite.twoline2satrec(element.tleLine1, element.tleLine2));
+            resultArray.push(element);
+        } catch (err) {
+            faultyItems += 1;
+        }
     });
     console.log('Number of faulty TLEs: ' + faultyItems);
     return resultArray;
@@ -109,31 +156,14 @@ function addDebrisToLayer() {
     positionsArray_g = parseDebris(sanitizedTleArray_g);
 
     positionsArray_g.forEach(body => {
-        debrisLayer.addRenderable(genPlaceMark(body));
+
+        debrisLayer.addRenderable(genPlaceMarker(body.position.latitude, body.position.longitude, body.position.altitude));
+        // debrisLayer.addRenderable(genPlaceMarker(47.684444, -121.129722, 1e2));
     });
 
-    wwd.redraw();
+    wwd.addLayer(debrisLayer);
 }
 
 function updateDebrisInLayer() {
 
-}
-
-function genPlaceMark(body) {
-    var placemarkPosition = new WorldWind.Position(body.latitude, body.longitude, body.altitude);
-    var placemark = new WorldWind.Placemark(placemarkPosition);
-    var placemarkAttributes = new WorldWind.PlacemarkAttributes(null);
-
-    // placemarkAttributes.color = WorldWind.Color.CYAN;
-    // placemarkAttributes.depthTest = false;
-
-    var highlightAttributes = new WorldWind.PlacemarkAttributes(placemarkAttributes);
-    highlightAttributes.imageScale = 0.90;
-    highlightAttributes.imageSource = "assets/icons/dot-green.png";
-    placemark.altitudeMode = WorldWind.RELATIVE_TO_GROUND;
-
-    placemark.attributes = placemarkAttributes;
-    placemark.highlightAttributes = highlightAttributes;
-
-    return placemark;
 }
