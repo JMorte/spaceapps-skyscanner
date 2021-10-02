@@ -2,29 +2,29 @@
 
 const debrisLayer = new WorldWind.RenderableLayer("Debris");
 
-const tleArray_g = [
-    {
-        tleLine1: '1 25544U 98067A   19156.50900463  .00003075  00000-0  59442-4 0  9992',
-        tleLine2: '2 25544  51.6433  59.2583 0008217  16.4489 347.6017 15.51174618173442',
-        id: '1',
-    },
-    {
-        tleLine1: '1 49266U 19063AS  21271.30822274  .00006367  00000-0  22572-2 0  9999',
-        tleLine2: '2 49266  98.5377 296.5207 0011437  91.5160 268.7335 14.34790113 15101',
-        id: '2',
-    }
-];
+// const tleArray_g = [
+//     {
+//         tleLine1: '1 25544U 98067A   19156.50900463  .00003075  00000-0  59442-4 0  9992',
+//         tleLine2: '2 25544  51.6433  59.2583 0008217  16.4489 347.6017 15.51174618173442',
+//         id: '1',
+//     },
+//     {
+//         tleLine1: '1 49266U 19063AS  21271.30822274  .00006367  00000-0  22572-2 0  9999',
+//         tleLine2: '2 49266  98.5377 296.5207 0011437  91.5160 268.7335 14.34790113 15101',
+//         id: '2',
+//     }
+// ];
 
 // Create the custom image for the placemark with a 2D canvas.
 const canvas = document.createElement("canvas");
 const ctx2d = canvas.getContext("2d");
-const size = 16;
+const size = 8;
 const c = size / 2 - 0.5;
 
 canvas.width = size;
 canvas.height = size;
 
-ctx2d.fillStyle = 'red';
+ctx2d.fillStyle = '#4BA85A';
 ctx2d.arc(c, c, c, 0, 2 * Math.PI, false);
 ctx2d.fill();
 
@@ -126,7 +126,7 @@ function parseDebris(tleArray) {
     let resultArray = [];
 
     tleArray.forEach(element => {
-        let position = getPosition(satellite.twoline2satrec(element.tleLine1, element.tleLine2));
+        let position = getPosition(satellite.twoline2satrec(element.Line1, element.Line2));
         resultArray.push({
             id: element.id,
             position: position,
@@ -138,12 +138,13 @@ function parseDebris(tleArray) {
 function sanitizeTleArray(tleArray) {
     let faultyItems = 0;
     let resultArray = [];
-
+    
     tleArray.forEach(element => {
         try {
-            getPosition(satellite.twoline2satrec(element.tleLine1, element.tleLine2));
+            getPosition(satellite.twoline2satrec(element.Line1, element.Line2));
             resultArray.push(element);
         } catch (err) {
+            console.log(err)
             faultyItems += 1;
         }
     });
