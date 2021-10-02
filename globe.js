@@ -64,16 +64,6 @@ function eventWindowLoaded() {
         layers[l].layer.enabled = layers[l].enabled;
         wwd.addLayer(layers[l].layer);
     }
-    // Add the placemarks layer to the WorldWindow's layer list.
-
-    // wwd.addLayer(debrisLayer);
-    // Create the renderable layer for placemarks.
-    var placemarkLayer = new WorldWind.RenderableLayer("Custom Placemark");
-    let placemark = genPlaceMarker(47.684444, -121.129722, 1e2);
-
-    // Add the placemark to the layer.
-    // placemarkLayer.addRenderable(placemark);
-    // wwd.addLayer(placemarkLayer);
     addDebrisToLayer();
 }
 
@@ -121,7 +111,6 @@ function getPosition(satrec) {
     return { latitude: latitude, longitude: longitude, altitude: height };
 }
 
-
 function parseDebris(tleArray) {
     let resultArray = [];
 
@@ -138,7 +127,7 @@ function parseDebris(tleArray) {
 function sanitizeTleArray(tleArray) {
     let faultyItems = 0;
     let resultArray = [];
-    
+
     tleArray.forEach(element => {
         try {
             getPosition(satellite.twoline2satrec(element.Line1, element.Line2));
@@ -157,14 +146,20 @@ function addDebrisToLayer() {
     positionsArray_g = parseDebris(sanitizedTleArray_g);
 
     positionsArray_g.forEach(body => {
-
         debrisLayer.addRenderable(genPlaceMarker(body.position.latitude, body.position.longitude, body.position.altitude));
-        // debrisLayer.addRenderable(genPlaceMarker(47.684444, -121.129722, 1e2));
     });
 
     wwd.addLayer(debrisLayer);
+
+    setInterval(updateDebrisInLayer, 2000);
 }
 
 function updateDebrisInLayer() {
-
+    positionsArray_g = parseDebris(sanitizedTleArray_g);
+    for (let i = 0; i < positionsArray_g.length; i++) {
+        debrisLayer.renderables[i].position.latitude = positionsArray_g[i].position.latitude;
+        debrisLayer.renderables[i].position.longitude = positionsArray_g[i].position.longitude;
+        debrisLayer.renderables[i].position.altitude = positionsArray_g[i].position.altitude;
+    }
+    wwd.redraw();
 }
