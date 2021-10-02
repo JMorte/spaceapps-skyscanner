@@ -2,7 +2,7 @@
 
 const debrisLayer = new WorldWind.RenderableLayer("Debris");
 
-const systemTimeIncrease_g = 2000;
+const systemTimeIncrease_g = 1000;
 let systemTimeOffset_g = 0;
 let intervalId_g;
 
