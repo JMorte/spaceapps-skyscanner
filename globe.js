@@ -6,6 +6,8 @@ const systemTimeIncrease_g = 1000;
 let systemTimeOffset_g = 0;
 let intervalId_g;
 
+let highlightedItems_g = [];
+
 $(document).ready(function () {
     $("#dateTimeBar").html((new Date()).toString());
     $("#dateSlider").slider({
@@ -48,6 +50,17 @@ ctx2d.fillStyle = '#4BA85A';
 ctx2d.arc(c, c, c, 0, 2 * Math.PI, false);
 ctx2d.fill();
 
+// Create the custom image for the placemark with a 2D canvas.
+const canvasHighlight = document.createElement("canvas");
+const ctx2dHighlight = canvasHighlight.getContext("2d");
+
+canvasHighlight.width = size*2;
+canvasHighlight.height = size*2;
+
+ctx2dHighlight.fillStyle = '#B7EEC0';
+ctx2dHighlight.arc(c*2, c*2, c*2, 0, 2 * Math.PI, false);
+ctx2dHighlight.fill();
+
 let sanitizedTleArray_g;
 let positionsArray_g;
 
@@ -63,6 +76,8 @@ function eventWindowLoaded() {
 
     // Create a World Window for the canvas.
     wwd = new WorldWind.WorldWindow("canvasOne");
+
+    var clickRecognizer = new WorldWind.ClickRecognizer(wwd, handleClick);
 
     // Create and add layers to the WorldWindow.
     var layers = [
@@ -102,7 +117,8 @@ function genPlaceMarker(latitude, longitude, altitude) {
     // are identical except the image scale. You could instead vary the color, image, or other property
     // to control the highlight representation.
     var highlightAttributes = new WorldWind.PlacemarkAttributes(placemarkAttributes);
-    highlightAttributes.imageScale = 1.2;
+    highlightAttributes.imageScale = 1;
+    highlightAttributes.imageSource = new WorldWind.ImageSource(canvasHighlight);
 
     // Create the placemark with the attributes defined above.
     var placemarkPosition = new WorldWind.Position(latitude, longitude, altitude);
@@ -186,6 +202,54 @@ function updateDebrisInLayer() {
         debrisLayer.renderables[i].position.latitude = positionsArray_g[i].position.latitude;
         debrisLayer.renderables[i].position.longitude = positionsArray_g[i].position.longitude;
         debrisLayer.renderables[i].position.altitude = positionsArray_g[i].position.altitude;
+        // debrisLayer.renderables[i].userProperties.velocity = velocityArray_g[i].velocity;
     }
     wwd.redraw();
+    updateInfoTab();
+}
+
+var handleClick = function (recognizer) {
+    var x = recognizer.clientX,
+        y = recognizer.clientY;
+    // Perform the pick. Must first convert from window coordinates to canvas coordinates, which are
+    // relative to the upper left corner of the canvas rather than the upper left corner of the page.
+    var rectRadius = 2,
+        pickPoint = wwd.canvasCoordinates(x, y),
+        pickRectangle = new WorldWind.Rectangle(pickPoint[0] - rectRadius, pickPoint[1] + rectRadius,
+            2 * rectRadius, 2 * rectRadius);
+
+    var pickList = wwd.pickShapesInRegion(pickRectangle);
+
+    // De-highlight any highlighted placemarks.
+    for (var h = 0; h < highlightedItems_g.length; h++) {
+        highlightedItems_g[h].highlighted = false;
+    }
+
+    highlightedItems_g = [];
+
+    if (pickList.objects.length > 0) {
+        for (var p = 0; p < pickList.objects.length; p++) {
+            if (pickList.objects[p].isOnTop) {
+                // Highlight the items picked.
+                pickList.objects[p].userObject.highlighted = true;
+                highlightedItems_g.push(pickList.objects[p].userObject);
+            }
+        }
+    }
+
+    wwd.redraw();
+
+    updateInfoTab();
+};
+
+function updateInfoTab() {
+    if (highlightedItems_g.length > 0) {
+        console.log(highlightedItems_g)
+        $("#altitude").html(highlightedItems_g[0].position.altitude.toFixed(2));
+        $("#latitude").html(highlightedItems_g[0].position.latitude);
+        $("#longitude").html(highlightedItems_g[0].position.longitude);
+        $("#debriInfo").show();
+    } else {
+        $("#debriInfo").hide();
+    }
 }
