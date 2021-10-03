@@ -260,7 +260,7 @@ function createChart(x, id) {
     };
     let layout = {
         title: "Altitude distribution",
-        xaxis: { title: 'Altitude' },
+        xaxis: { title: 'Altitude [km]' },
         yaxis: { title: 'Count' }
     }
     var data = [trace];
