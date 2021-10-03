@@ -8,6 +8,9 @@ let intervalId_g;
 
 let highlightedItems_g = [];
 
+const leoThreshold = 2000000; // kilometers
+const meoThreshold = 35786000; // kilometers
+
 $(document).ready(function () {
     $("#dateTimeBar").html((new Date()).toString());
     $("#dateSlider").slider({
@@ -37,29 +40,20 @@ $(document).ready(function () {
     });
 });
 
-// Create the custom image for the placemark with a 2D canvas.
-const canvas = document.createElement("canvas");
-const ctx2d = canvas.getContext("2d");
-const size = 8;
-const c = size / 2 - 0.5;
+function generateCanvas(color, size) {
+    // Create the custom image for the placemark with a 2D canvas.
+    const canvas = document.createElement("canvas");
+    const ctx2d = canvas.getContext("2d");
+    const c = size / 2 - 0.5;
 
-canvas.width = size;
-canvas.height = size;
+    canvas.width = size;
+    canvas.height = size;
 
-ctx2d.fillStyle = '#4BA85A';
-ctx2d.arc(c, c, c, 0, 2 * Math.PI, false);
-ctx2d.fill();
-
-// Create the custom image for the placemark with a 2D canvas.
-const canvasHighlight = document.createElement("canvas");
-const ctx2dHighlight = canvasHighlight.getContext("2d");
-
-canvasHighlight.width = size*2;
-canvasHighlight.height = size*2;
-
-ctx2dHighlight.fillStyle = '#B7EEC0';
-ctx2dHighlight.arc(c*2, c*2, c*2, 0, 2 * Math.PI, false);
-ctx2dHighlight.fill();
+    ctx2d.fillStyle = color;
+    ctx2d.arc(c, c, c, 0, 2 * Math.PI, false);
+    ctx2d.fill();
+    return canvas;
+}
 
 let sanitizedTleArray_g;
 let positionsArray_g;
@@ -103,10 +97,19 @@ function eventWindowLoaded() {
 }
 
 function genPlaceMarker(latitude, longitude, altitude) {
+    let colour;
+    if (altitude < leoThreshold) {
+        colour = '#96413A';
+    } else if (altitude < meoThreshold) {
+        colour = '#BECB3C';
+    } else {
+        colour = '#4BA85A';
+    }
+
     // Set placemark attributes.
     var placemarkAttributes = new WorldWind.PlacemarkAttributes(null);
     // Wrap the canvas created above in an ImageSource object to specify it as the placemarkAttributes image source.
-    placemarkAttributes.imageSource = new WorldWind.ImageSource(canvas);
+    placemarkAttributes.imageSource = new WorldWind.ImageSource(generateCanvas(colour, 8));
     // Define the pivot point for the placemark at the center of its image source.
     placemarkAttributes.imageOffset = new WorldWind.Offset(WorldWind.OFFSET_FRACTION, 0.5, WorldWind.OFFSET_FRACTION, 0.5);
     placemarkAttributes.imageScale = 1;
@@ -118,7 +121,7 @@ function genPlaceMarker(latitude, longitude, altitude) {
     // to control the highlight representation.
     var highlightAttributes = new WorldWind.PlacemarkAttributes(placemarkAttributes);
     highlightAttributes.imageScale = 1;
-    highlightAttributes.imageSource = new WorldWind.ImageSource(canvasHighlight);
+    highlightAttributes.imageSource = new WorldWind.ImageSource(generateCanvas(colour, 16));
 
     // Create the placemark with the attributes defined above.
     var placemarkPosition = new WorldWind.Position(latitude, longitude, altitude);
@@ -130,13 +133,23 @@ function genPlaceMarker(latitude, longitude, altitude) {
     return placemark;
 }
 
-function getPosition(satrec) {
+function getPositionAndVelocity(satrec) {
     /*
         Compute the location of the TLE lines at a specific time    
     */
     let time = new Date(Date.now() + systemTimeOffset_g);
     let positionAndVelocity = satellite.propagate(satrec, time);
     let positionEci = positionAndVelocity.position;
+
+    let vX = positionAndVelocity.velocity.x,
+        vY = positionAndVelocity.velocity.y,
+        vZ = positionAndVelocity.velocity.z;
+
+    let velocity = Math.sqrt(
+        vX * vX +
+        vY * vY +
+        vZ * vZ
+    );
 
     let gmst = satellite.gstime(time);
 
@@ -145,7 +158,7 @@ function getPosition(satrec) {
         latitude = satellite.radiansToDegrees(positionGd.latitude),
         height = positionGd.height * 1000;
 
-    return { latitude: latitude, longitude: longitude, altitude: height };
+    return { latitude: latitude, longitude: longitude, altitude: height, velocity: velocity };
 }
 
 function parseDebris(tleArray) {
@@ -153,7 +166,7 @@ function parseDebris(tleArray) {
 
     tleArray.forEach(element => {
         try {
-            let position = getPosition(satellite.twoline2satrec(element.Line1, element.Line2));
+            let position = getPositionAndVelocity(satellite.twoline2satrec(element.Line1, element.Line2));
             resultArray.push({
                 id: element.id,
                 position: position,
@@ -170,7 +183,7 @@ function sanitizeTleArray(tleArray) {
 
     tleArray.forEach(element => {
         try {
-            getPosition(satellite.twoline2satrec(element.Line1, element.Line2));
+            getPositionAndVelocity(satellite.twoline2satrec(element.Line1, element.Line2));
             resultArray.push(element);
         } catch (err) {
             console.log(err)
@@ -202,7 +215,7 @@ function updateDebrisInLayer() {
         debrisLayer.renderables[i].position.latitude = positionsArray_g[i].position.latitude;
         debrisLayer.renderables[i].position.longitude = positionsArray_g[i].position.longitude;
         debrisLayer.renderables[i].position.altitude = positionsArray_g[i].position.altitude;
-        // debrisLayer.renderables[i].userProperties.velocity = velocityArray_g[i].velocity;
+        debrisLayer.renderables[i].userProperties.velocity = positionsArray_g[i].position.velocity;
     }
     wwd.redraw();
     updateInfoTab();
@@ -245,9 +258,10 @@ var handleClick = function (recognizer) {
 function updateInfoTab() {
     if (highlightedItems_g.length > 0) {
         console.log(highlightedItems_g)
+        $("#velocity").html(highlightedItems_g[0].userProperties.velocity.toFixed(2));
         $("#altitude").html(highlightedItems_g[0].position.altitude.toFixed(2));
-        $("#latitude").html(highlightedItems_g[0].position.latitude);
-        $("#longitude").html(highlightedItems_g[0].position.longitude);
+        $("#latitude").html(highlightedItems_g[0].position.latitude.toFixed(4));
+        $("#longitude").html(highlightedItems_g[0].position.longitude.toFixed(4));
         $("#debriInfo").show();
     } else {
         $("#debriInfo").hide();
