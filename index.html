@@ -15,6 +15,7 @@
         integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
     <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"
         integrity="sha256-VazP97ZCwtekAsvgPBSUwPFKdrwD3unUfSGVYrahUqU=" crossorigin="anonymous"></script>
+    <script src="https://cdn.plot.ly/plotly-2.4.2.min.js"></script>
 
     <script src="./tle.js"></script>
     <script src="./globe.js"></script>
@@ -25,6 +26,7 @@
 </head>
 
 <body>
+
     <body>
         <div id="debriInfo">
             <div class="infoSec">
@@ -40,7 +42,7 @@
                 Longitude: <span id="longitude"></span>º
             </div>
         </div>
-
+        <div id="altitudeChart"></div>
         <div id="timeBar">
             <div id="topTimeBar">
                 <div id="dateTimeBar"></div>
@@ -54,8 +56,8 @@
         <canvas id="canvasOne">
             Your browser does not support HTML5 Canvas.
         </canvas>
-    </div>
+        </div>
 
-</body>
+    </body>
 
 </html>

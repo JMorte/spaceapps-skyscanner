@@ -111,7 +111,7 @@ function genPlaceMarker(latitude, longitude, altitude) {
     // Set placemark attributes.
     let placemarkAttributes = new WorldWind.PlacemarkAttributes(null);
     // Wrap the canvas created above in an ImageSource object to specify it as the placemarkAttributes image source.
-    placemarkAttributes.imageSource = new WorldWind.ImageSource(generateCanvas(colour, 8));
+    placemarkAttributes.imageSource = new WorldWind.ImageSource(generateCanvas(colour, 4));
     // Define the pivot point for the placemark at the center of its image source.
     placemarkAttributes.imageOffset = new WorldWind.Offset(WorldWind.OFFSET_FRACTION, 0.5, WorldWind.OFFSET_FRACTION, 0.5);
     placemarkAttributes.imageScale = 1;
@@ -203,30 +203,60 @@ function sanitizeTleArray(tleArray) {
 function addDebrisToLayer() {
     sanitizedTleArray_g = sanitizeTleArray(tleArray_g);
     positionsArray_g = parseDebris(sanitizedTleArray_g);
+    let altitudeArray = [];
 
     positionsArray_g.forEach(body => {
         debrisLayer_g.addRenderable(genPlaceMarker(body.position.latitude, body.position.longitude, body.position.altitude));
+        altitudeArray.push(body.position.altitude / 1000);
     });
 
     wwd.addLayer(debrisLayer_g);
 
     intervalId_g = setInterval(updateDebrisInLayer, systemTimeIncrease_g);
+    createChart(altitudeArray, 'altitudeChart');
 }
 
 function updateDebrisInLayer() {
     let time = new Date(Date.now() + systemTimeOffset_g);
     $("#dateTimeBar").html(time.toString());
     positionsArray_g = parseDebris(sanitizedTleArray_g);
+    let altitudeArray = [];
     for (let i = 0; i < positionsArray_g.length; i++) {
         debrisLayer_g.renderables[i].position.latitude = positionsArray_g[i].position.latitude;
         debrisLayer_g.renderables[i].position.longitude = positionsArray_g[i].position.longitude;
         debrisLayer_g.renderables[i].position.altitude = positionsArray_g[i].position.altitude;
         debrisLayer_g.renderables[i].userProperties.velocity = positionsArray_g[i].position.velocity;
         debrisLayer_g.renderables[i].userProperties.index = i;
+        altitudeArray.push(positionsArray_g[i].position.altitude / 1000);
     }
     wwd.redraw();
     createOrbit();
     updateInfoTab();
+    // updateChart(altitudeArray, 'altitudeChart');
+}
+
+function createChart(x, id) {
+    var trace = {
+        x: x,
+        type: 'histogram',
+        name: "count",
+        xbins: {
+            end: 2500,
+            start: 0,
+            size: 50,
+        }
+    };
+    let layout = {
+        title: "Altitude distribution",
+        xaxis: { title: 'Altitude' },
+        yaxis: { title: 'Count' }
+    }
+    var data = [trace];
+    Plotly.newPlot(id, data, layout);
+}
+
+function updateChart(data, id) {
+    Plotly.restyle(id, 'x', [data]);
 }
 
 let handleClick = function (recognizer) {
@@ -280,7 +310,7 @@ function updateInfoTab() {
 function createOrbit() {
     orbitsLayer_g.removeAllRenderables();
 
-    const orbitRange = 500;
+    const orbitRange = 200;
 
     let now = new Date();
     const pastOrbit = [];

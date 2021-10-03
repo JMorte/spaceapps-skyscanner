@@ -58,6 +58,14 @@ body {
     margin-bottom: 5px;
 }
 
+#altitudeChart {
+    position: absolute;
+    z-index: 1;
+    top: 30px;
+    right: 30px;
+    width: 450px;
+}
+
 #debriInfo {
     position: absolute;
     z-index: 1;
