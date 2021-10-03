@@ -111,7 +111,7 @@ function genPlaceMarker(latitude, longitude, altitude) {
     // Set placemark attributes.
     let placemarkAttributes = new WorldWind.PlacemarkAttributes(null);
     // Wrap the canvas created above in an ImageSource object to specify it as the placemarkAttributes image source.
-    placemarkAttributes.imageSource = new WorldWind.ImageSource(generateCanvas(colour, 4));
+    placemarkAttributes.imageSource = new WorldWind.ImageSource(generateCanvas(colour, 6));
     // Define the pivot point for the placemark at the center of its image source.
     placemarkAttributes.imageOffset = new WorldWind.Offset(WorldWind.OFFSET_FRACTION, 0.5, WorldWind.OFFSET_FRACTION, 0.5);
     placemarkAttributes.imageScale = 1;
@@ -164,7 +164,7 @@ function getPositionAndVelocity(satrec, time = null) {
         latitude = satellite.radiansToDegrees(positionGd.latitude),
         height = positionGd.height * 1000;
 
-    return { latitude: latitude, longitude: longitude, altitude: height, velocity: velocity };
+    return { latitude: latitude, longitude: longitude, altitude: height, velocity: velocity, no: satrec.no };
 }
 
 function parseDebris(tleArray) {
@@ -204,11 +204,22 @@ function addDebrisToLayer() {
     sanitizedTleArray_g = sanitizeTleArray(tleArray_g);
     positionsArray_g = parseDebris(sanitizedTleArray_g);
     let altitudeArray = [];
+    let renderable;
+    let body;
 
-    positionsArray_g.forEach(body => {
-        debrisLayer_g.addRenderable(genPlaceMarker(body.position.latitude, body.position.longitude, body.position.altitude));
+    for (let i = 0; i < positionsArray_g.length; i++) {
+        body = positionsArray_g[i];
+
+        renderable = genPlaceMarker(body.position.latitude, body.position.longitude, body.position.altitude);
+
+        renderable.userProperties.velocity = body.position.velocity;
+        renderable.userProperties.index = i;
+        renderable.userProperties.no = body.position.no;
+
+        debrisLayer_g.addRenderable(renderable);
+
         altitudeArray.push(body.position.altitude / 1000);
-    });
+    }
 
     wwd.addLayer(debrisLayer_g);
 
@@ -227,6 +238,7 @@ function updateDebrisInLayer() {
         debrisLayer_g.renderables[i].position.altitude = positionsArray_g[i].position.altitude;
         debrisLayer_g.renderables[i].userProperties.velocity = positionsArray_g[i].position.velocity;
         debrisLayer_g.renderables[i].userProperties.index = i;
+        debrisLayer_g.renderables[i].userProperties.no = positionsArray_g[i].position.no;
         altitudeArray.push(positionsArray_g[i].position.altitude / 1000);
     }
     wwd.redraw();
@@ -310,7 +322,15 @@ function updateInfoTab() {
 function createOrbit() {
     orbitsLayer_g.removeAllRenderables();
 
-    const orbitRange = 200;
+    if (highlightedItems_g.length == 0) {
+        return;
+    }
+
+    let index = highlightedItems_g[0].userProperties.index;
+    let no = highlightedItems_g[0].userProperties.no;
+    let period = Math.round(2 * Math.PI / no);
+
+    const orbitRange = period;
 
     let now = new Date();
     const pastOrbit = [];
@@ -319,7 +339,6 @@ function createOrbit() {
         let time = new Date(now.getTime() + (i * 60000));
         let position;
         try {
-            let index = highlightedItems_g[0].userProperties.index;
             position = getPositionAndVelocity(satellite.twoline2satrec(sanitizedTleArray_g[index].Line1, sanitizedTleArray_g[index].Line2), time);
         } catch (err) {
             continue;
