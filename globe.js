@@ -1,6 +1,7 @@
 "use strict";
 
-const debrisLayer = new WorldWind.RenderableLayer("Debris");
+const debrisLayer_g = new WorldWind.RenderableLayer("Debris");
+const orbitsLayer_g = new WorldWind.RenderableLayer("Orbit");
 
 const systemTimeIncrease_g = 1000;
 let systemTimeOffset_g = 0;
@@ -71,10 +72,10 @@ function eventWindowLoaded() {
     // Create a World Window for the canvas.
     wwd = new WorldWind.WorldWindow("canvasOne");
 
-    var clickRecognizer = new WorldWind.ClickRecognizer(wwd, handleClick);
+    let clickRecognizer = new WorldWind.ClickRecognizer(wwd, handleClick);
 
     // Create and add layers to the WorldWindow.
-    var layers = [
+    let layers = [
         // Imagery layers.
         { layer: new WorldWind.BMNGLayer(), enabled: true },
         { layer: new WorldWind.BMNGLandsatLayer(), enabled: false },
@@ -89,11 +90,12 @@ function eventWindowLoaded() {
         { layer: new WorldWind.ViewControlsLayer(wwd), enabled: false },
     ];
 
-    for (var l = 0; l < layers.length; l++) {
+    for (let l = 0; l < layers.length; l++) {
         layers[l].layer.enabled = layers[l].enabled;
         wwd.addLayer(layers[l].layer);
     }
     addDebrisToLayer();
+    wwd.addLayer(orbitsLayer_g);
 }
 
 function genPlaceMarker(latitude, longitude, altitude) {
@@ -107,7 +109,7 @@ function genPlaceMarker(latitude, longitude, altitude) {
     }
 
     // Set placemark attributes.
-    var placemarkAttributes = new WorldWind.PlacemarkAttributes(null);
+    let placemarkAttributes = new WorldWind.PlacemarkAttributes(null);
     // Wrap the canvas created above in an ImageSource object to specify it as the placemarkAttributes image source.
     placemarkAttributes.imageSource = new WorldWind.ImageSource(generateCanvas(colour, 8));
     // Define the pivot point for the placemark at the center of its image source.
@@ -119,13 +121,13 @@ function genPlaceMarker(latitude, longitude, altitude) {
     // Note that the normal attributes are specified as the default highlight attributes so that all properties
     // are identical except the image scale. You could instead vary the color, image, or other property
     // to control the highlight representation.
-    var highlightAttributes = new WorldWind.PlacemarkAttributes(placemarkAttributes);
+    let highlightAttributes = new WorldWind.PlacemarkAttributes(placemarkAttributes);
     highlightAttributes.imageScale = 1;
     highlightAttributes.imageSource = new WorldWind.ImageSource(generateCanvas(colour, 16));
 
     // Create the placemark with the attributes defined above.
-    var placemarkPosition = new WorldWind.Position(latitude, longitude, altitude);
-    var placemark = new WorldWind.Placemark(placemarkPosition, false, placemarkAttributes);
+    let placemarkPosition = new WorldWind.Position(latitude, longitude, altitude);
+    let placemark = new WorldWind.Placemark(placemarkPosition, false, placemarkAttributes);
     // Draw placemark at altitude defined above, relative to the terrain.
     placemark.altitudeMode = WorldWind.RELATIVE_TO_GROUND;
     // Assign highlight attributes for the placemark.
@@ -133,11 +135,15 @@ function genPlaceMarker(latitude, longitude, altitude) {
     return placemark;
 }
 
-function getPositionAndVelocity(satrec) {
+function getPositionAndVelocity(satrec, time = null) {
     /*
         Compute the location of the TLE lines at a specific time    
     */
-    let time = new Date(Date.now() + systemTimeOffset_g);
+    if (time == null) {
+        time = new Date(Date.now() + systemTimeOffset_g);
+    } else {
+        time = new Date(time.getTime() + systemTimeOffset_g);
+    }
     let positionAndVelocity = satellite.propagate(satrec, time);
     let positionEci = positionAndVelocity.position;
 
@@ -199,10 +205,10 @@ function addDebrisToLayer() {
     positionsArray_g = parseDebris(sanitizedTleArray_g);
 
     positionsArray_g.forEach(body => {
-        debrisLayer.addRenderable(genPlaceMarker(body.position.latitude, body.position.longitude, body.position.altitude));
+        debrisLayer_g.addRenderable(genPlaceMarker(body.position.latitude, body.position.longitude, body.position.altitude));
     });
 
-    wwd.addLayer(debrisLayer);
+    wwd.addLayer(debrisLayer_g);
 
     intervalId_g = setInterval(updateDebrisInLayer, systemTimeIncrease_g);
 }
@@ -212,52 +218,55 @@ function updateDebrisInLayer() {
     $("#dateTimeBar").html(time.toString());
     positionsArray_g = parseDebris(sanitizedTleArray_g);
     for (let i = 0; i < positionsArray_g.length; i++) {
-        debrisLayer.renderables[i].position.latitude = positionsArray_g[i].position.latitude;
-        debrisLayer.renderables[i].position.longitude = positionsArray_g[i].position.longitude;
-        debrisLayer.renderables[i].position.altitude = positionsArray_g[i].position.altitude;
-        debrisLayer.renderables[i].userProperties.velocity = positionsArray_g[i].position.velocity;
+        debrisLayer_g.renderables[i].position.latitude = positionsArray_g[i].position.latitude;
+        debrisLayer_g.renderables[i].position.longitude = positionsArray_g[i].position.longitude;
+        debrisLayer_g.renderables[i].position.altitude = positionsArray_g[i].position.altitude;
+        debrisLayer_g.renderables[i].userProperties.velocity = positionsArray_g[i].position.velocity;
+        debrisLayer_g.renderables[i].userProperties.index = i;
     }
     wwd.redraw();
+    createOrbit();
     updateInfoTab();
 }
 
-var handleClick = function (recognizer) {
-    var x = recognizer.clientX,
+let handleClick = function (recognizer) {
+    let x = recognizer.clientX,
         y = recognizer.clientY;
     // Perform the pick. Must first convert from window coordinates to canvas coordinates, which are
     // relative to the upper left corner of the canvas rather than the upper left corner of the page.
-    var rectRadius = 2,
+    let rectRadius = 2,
         pickPoint = wwd.canvasCoordinates(x, y),
         pickRectangle = new WorldWind.Rectangle(pickPoint[0] - rectRadius, pickPoint[1] + rectRadius,
             2 * rectRadius, 2 * rectRadius);
 
-    var pickList = wwd.pickShapesInRegion(pickRectangle);
+    let pickList = wwd.pickShapesInRegion(pickRectangle);
 
     // De-highlight any highlighted placemarks.
-    for (var h = 0; h < highlightedItems_g.length; h++) {
+    for (let h = 0; h < highlightedItems_g.length; h++) {
         highlightedItems_g[h].highlighted = false;
     }
 
     highlightedItems_g = [];
 
     if (pickList.objects.length > 0) {
-        for (var p = 0; p < pickList.objects.length; p++) {
+        for (let p = 0; p < pickList.objects.length; p++) {
             if (pickList.objects[p].isOnTop) {
                 // Highlight the items picked.
                 pickList.objects[p].userObject.highlighted = true;
                 highlightedItems_g.push(pickList.objects[p].userObject);
             }
         }
+        orbitsLayer_g.enabled = true;
+    } else {
+        orbitsLayer_g.enabled = false;
     }
-
-    wwd.redraw();
-
+    createOrbit();
     updateInfoTab();
+    wwd.redraw();
 };
 
 function updateInfoTab() {
     if (highlightedItems_g.length > 0) {
-        console.log(highlightedItems_g)
         $("#velocity").html(highlightedItems_g[0].userProperties.velocity.toFixed(2));
         $("#altitude").html(highlightedItems_g[0].position.altitude.toFixed(2));
         $("#latitude").html(highlightedItems_g[0].position.latitude.toFixed(4));
@@ -266,4 +275,52 @@ function updateInfoTab() {
     } else {
         $("#debriInfo").hide();
     }
+}
+
+function createOrbit() {
+    orbitsLayer_g.removeAllRenderables();
+
+    const orbitRange = 500;
+
+    let now = new Date();
+    const pastOrbit = [];
+    const futureOrbit = [];
+    for (let i = -orbitRange; i <= orbitRange; i++) {
+        let time = new Date(now.getTime() + (i * 60000));
+        let position;
+        try {
+            let index = highlightedItems_g[0].userProperties.index;
+            position = getPositionAndVelocity(satellite.twoline2satrec(sanitizedTleArray_g[index].Line1, sanitizedTleArray_g[index].Line2), time);
+        } catch (err) {
+            continue;
+        }
+        let wwdPosition = new WorldWind.Position(position.latitude, position.longitude, position.altitude);
+        if (i <= 0) {
+            pastOrbit.push(wwdPosition);
+        }
+        if (i >= 0) {
+            futureOrbit.push(wwdPosition);
+        }
+    }
+
+    let pastOrbitPathAttributes = new WorldWind.ShapeAttributes(null);
+    pastOrbitPathAttributes.outlineColor = WorldWind.Color.RED;
+    pastOrbitPathAttributes.interiorColor = new WorldWind.Color(1, 0, 0, 0.5);
+
+    let futureOrbitPathAttributes = new WorldWind.ShapeAttributes(null);
+    futureOrbitPathAttributes.outlineColor = WorldWind.Color.GREEN;
+    futureOrbitPathAttributes.interiorColor = new WorldWind.Color(0, 1, 0, 0.5);
+
+    let pastOrbitPath = new WorldWind.Path(pastOrbit);
+    pastOrbitPath.altitudeMode = WorldWind.RELATIVE_TO_GROUND;
+    pastOrbitPath.attributes = pastOrbitPathAttributes;
+    pastOrbitPath.useSurfaceShapeFor2D = true;
+
+    let futureOrbitPath = new WorldWind.Path(futureOrbit);
+    futureOrbitPath.altitudeMode = WorldWind.RELATIVE_TO_GROUND;
+    futureOrbitPath.attributes = futureOrbitPathAttributes;
+    futureOrbitPath.useSurfaceShapeFor2D = true;
+
+    orbitsLayer_g.addRenderable(pastOrbitPath);
+    orbitsLayer_g.addRenderable(futureOrbitPath);
 }
